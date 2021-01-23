@@ -17,7 +17,14 @@ def narrow_to_candidate(results_df, candidate_selection):
     candidate_df = results_df[results_df['candidate_selection'] == candidate_selection]
     return candidate_df
 
+def narrow_to_ward(results_df, ward_num):
+    ward_df = results_df[results_df['ward'] == ward_num]
+    return ward_df
+
 sum_precinct_aggregation_function = {'vote_count': 'sum'}
+groupby_columns = ['election_date', 'contest_name', 'candidate_selection', 'ward', 'precinct']
 def sum_votes_by_precinct(results_df):
-    summed_df = results_df.groupby(['election_date', 'contest_name', 'candidate_selection', 'ward', 'precinct'], as_index=False).aggregate(sum_precinct_aggregation_function)
+    summed_df = results_df.groupby(groupby_columns, as_index=False).aggregate(sum_precinct_aggregation_function)
     return summed_df
+
+

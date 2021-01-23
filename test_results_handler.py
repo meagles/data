@@ -44,6 +44,7 @@ sample_candidate_num_rows = 72
 @pytest.fixture
 def sample_ward():
     return 4
+sample_ward_num_rows = 80
 sample_ward_vote_count_by_precinct = [73, 84, 26, 39, 36, 26, 49,  6, 10,  5]
 
 def test_read_results_csv(sample_results_csv_path, results_indexes):
@@ -69,12 +70,19 @@ def test_narrow_to_candidate(sample_results_df, sample_election_date, sample_con
     num_rows = len(candidate_df.index)
     dt.validate(num_rows, sample_candidate_num_rows)
     
+def test_narrow_to_ward(sample_results_df, sample_election_date, sample_contest_name, sample_ward):
+    elec_df = rh.narrow_to_election(sample_results_df, sample_election_date)
+    contest_df = rh.narrow_to_contest(elec_df, sample_contest_name)
+    ward_df = rh.narrow_to_ward(contest_df, sample_ward)
+    num_rows = len(ward_df.index)
+    dt.validate(num_rows, sample_ward_num_rows)
+
 def test_sum_votes_by_precinct(sample_results_df, sample_election_date, sample_contest_name, sample_candidate_name, sample_ward):
     elec_df = rh.narrow_to_election(sample_results_df, sample_election_date)
     contest_df = rh.narrow_to_contest(elec_df, sample_contest_name)
     candidate_df = rh.narrow_to_candidate(contest_df, sample_candidate_name)
     summed_df = rh.sum_votes_by_precinct(candidate_df)
-    ward_df = summed_df[summed_df["ward"] == sample_ward]
+    ward_df = rh.narrow_to_ward(summed_df, sample_ward)
     dt.validate(ward_df.vote_count.values, sample_ward_vote_count_by_precinct)
     
     
