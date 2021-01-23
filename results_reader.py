@@ -12,8 +12,9 @@ table_settings = {
     "text_x_tolerance": 2,
 }
 normal_column_names = ["Reg. Voters", "Cards Cast", "% Turnout", "Times Counted", "Total Votes"]
-special_column_names = ["Write-In Votes"]
-special_contest_names = ["TURN OUT", "TREASURER"] # Treasurer vote is an issue in 2020 nov election
+special_column_names = ["Write-In Votes", "McFARLANE DUNCAN", "SAUNDRA McDOWELL"] # Candidate names are always all caps, although "Mc" in a name is an exception
+# TODO: Handle better:
+special_contest_names = ["TURN OUT", "TREASURER", "GOV DEM", "LT GOV REP", "LT GOV LIB", "SEC OF STATE LIB", "SEC OF STATE CON", "ST TREASURER LIB", "ST REP 83 LIB", "ST REP 91 DEM", "COM MAN LIB CITYWIDE",  "COM MAN GRN ALL OTHERS", "COM MAN CON CITYWIDE"] # Treasurer vote is an issue in 2020 nov election
 
 #TODO:
 election_date = "2020-06-23"
@@ -187,7 +188,7 @@ def read_pages(pdf_page_dfs):
                 for col_name, content in row.iteritems():
                     if col_name.isupper() or col_name in special_column_names:
                         if not content.isnumeric():
-                            content = 0
+                            continue
                         tidy_data.append({
                             "election_date":election_date,
                             "ward":ward_num,
