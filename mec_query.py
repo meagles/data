@@ -31,13 +31,11 @@ class Candidate(db.Model):
     def stats(self):
         return {"$ Raised": 5}
 
-
 class Contributor(db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     name = db.Column(db.String)
     zip5 = db.Column(db.String)
     is_committee = db.Column(db.Boolean)
-
 
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -65,7 +63,21 @@ class Contribution(db.Model):
         return pd.read_sql("contribution", db.engine)
 
 
-def build_mec_df(mec_ids):
+candidate_name_dict = {  # FIXME: This is a shortcut for now
+    "Tishaura O. Jones for Mayor": "Tishaura Jones",
+    "Cara Spencer For Mayor": "Cara Spencer",
+    "Reed For St Louis": "Lewis Reed",
+    "Friends of Andrew Jones": "Andrew Jones",
+}
+
+candidate_pac_dict = {
+    "C201175": {"candidate_mec_id":"C201500", "candidate_name":"Lewis Reed", "pac_name": "One St. Louis"},
+    "C201534": {"candidate_mec_id":"C201500", "candidate_name":"Lewis Reed", "pac_name": "Leadership Counts"},
+    "C201113": {"candidate_mec_id":"C201499", "candidate_name":"Tishaura Jones", "pac_name": "314 Forward"},
+    "C211552": {"candidate_mec_id":"C201099", "candidate_name":"Cara Spencer", "pac_name": "Gateway to Progress"},
+}
+
+def build_mec_df(mec_ids, candidate_pac_ids):
     li = []
     for filename in os.listdir("data/mec_geocoded"):
         df_geocoded = pd.read_csv(
@@ -82,7 +94,8 @@ def build_mec_df(mec_ids):
             df = df_geocoded
         df.loc[:, "ZIP5"] = df.loc[:, "Zip"].astype(str).str[:5]
         df.loc[:, "MECID"] = df.loc[:, " MECID"]
-        df = df[df["MECID"].isin(mec_ids)]
+        df.loc[:, "to_candidate_pac"] = df.loc[:, "MECID"].isin(candidate_pac_ids)
+        df = df[df["MECID"].isin(mec_ids + candidate_pac_ids)]
         li.append(df)
     frame = pd.concat(li, verify_integrity=True)
     return frame
@@ -102,20 +115,16 @@ def create_tables():
 
 def create_contributions(mec_df):
     mec_col_name = " MECID"  # this column has a space in front for some reason
-    name_dict = {  # FIXME: This is a shortcut for now
-        "Tishaura O. Jones for Mayor": "Tishaura Jones",
-        "Cara Spencer For Mayor": "Cara Spencer",
-        "Reed For St Louis": "Lewis Reed",
-        "Friends of Andrew Jones": "Andrew Jones",
-    }
     candidate_dict = {}
     contributor_dict = {}
     all_contributions = []
+    mec_df = mec_df.sort_values("to_candidate_pac")
     for index, row in mec_df.iterrows():
-
-        if row[mec_col_name] not in candidate_dict:
+        if row[mec_col_name] in candidate_pac_dict:
+            this_candidate = candidate_dict[candidate_pac_dict[row[mec_col_name]]["candidate_mec_id"]]
+        elif row[mec_col_name] not in candidate_dict:
             this_candidate = Candidate(
-                name=name_dict[row["Committee Name"]],
+                name=candidate_name_dict[row["Committee Name"]],
                 committee_name=row["Committee Name"],
                 mec_id=row[mec_col_name],
             )
@@ -140,7 +149,9 @@ def create_contributions(mec_df):
         namezip = contributor_name + " " + row["ZIP5"]
         if namezip not in contributor_dict:
             this_contributor = Contributor(
-                name=contributor_name, zip5=row["ZIP5"], is_committee=is_committee
+                name=contributor_name,
+                zip5=row["ZIP5"], 
+                is_committee=is_committee
             )
             contributor_dict[namezip] = this_contributor
             db.session.add(this_contributor)
@@ -269,7 +280,7 @@ def get_all_contributors():
     )
 
 def get_candidate_total_donations(candidate_name):
-    return db.session.query(
+    candidate_funds = db.session.query(
         func.sum(Contribution.amount)
     ).filter(
         and_(
@@ -277,6 +288,8 @@ def get_candidate_total_donations(candidate_name):
             Contribution.contribution_type == "M"
         )
     ).scalar()
+
+    return candidate_funds
     
 
 def get_contribution_stats_for_candidate(candidate_name):

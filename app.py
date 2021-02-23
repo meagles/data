@@ -62,7 +62,6 @@ app.layout = get_sidebar_layout(db)
     [State("candidate_info_collapse", "is_open")],
 )
 def toggle_collapse(clicked_data, is_open):
-    print(clicked_data)
     if clicked_data:
         candidate_row = (
             db.session.query(Candidate)
